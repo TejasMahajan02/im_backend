@@ -20,21 +20,6 @@ export class AuthService {
         private readonly emailService: EmailService,
     ) { }
 
-    maskEmail(email: string, maskDomain: boolean = false): string {
-        const [localPart, domain] = email.split('@');
-        const visibleLocalChars = 4;
-        const maskedLocalPart = localPart.slice(0, visibleLocalChars) + '*'.repeat(localPart.length - visibleLocalChars);
-
-        if (maskDomain) {
-            const visibleDomainChars = 2;
-            const [domainName, domainExtension] = domain.split('.');
-            const maskedDomainName = domainName.slice(0, visibleDomainChars) + '*'.repeat(domainName.length - visibleDomainChars);
-            return `${maskedLocalPart}@${maskedDomainName}.${domainExtension}`;
-        }
-
-        return `${maskedLocalPart}@${domain}`;
-    }
-
     async signUp(createUserDto: CreateUserDto) {
         // Validate user exist or not?
         if (await this.userService.findOneByEmail(createUserDto.email)) {
@@ -79,35 +64,45 @@ export class AuthService {
         const otp = this.otpService.generateNumericOTP();
         const hashedOtp = await this.passwordService.hashPassword(otp);
 
+        // Find the user by email
+        const user = await this.userService.findOneByEmail(email);
+        if (!user) {
+            throw new NotFoundException(UserMessages.notFound);
+        }
+
         // Check if an OTP record already exists for the given email
         let otpEntity = await this.otpService.findOneByEmail(email);
 
-        // Get currnet date
+        // Get current date
         const currentDate = new Date()
 
         if (otpEntity) {
             // If the OTP record exists, update the otp and createdAt fields
             otpEntity.otp = hashedOtp;
             otpEntity.createdAt = currentDate; // Update the createdAt field to current time
-            otpEntity.modifiedAt = currentDate; // Used to identify first time login or not
+            otpEntity.modifiedAt = currentDate; // Used to identify first-time login or not
         } else {
             // If the OTP record does not exist, create a new record
             otpEntity = this.otpService.create(email, role, hashedOtp, currentDate);
+
+            // Set the user in the OTP entity
+            otpEntity.user = user;
         }
 
         // Save the OTP entity to the database
-        const otpUser = await this.otpService.save(otpEntity);
+        const savedOtpEntity = await this.otpService.save(otpEntity);
 
-        if (!otpUser) {
+        if (!savedOtpEntity) {
             throw new InternalServerErrorException(OtpMessages.unexpectedError);
         }
 
-        // Send the verification key to user email
-        await this.emailService.sendVerificationKey(otpUser.email, otp);
+        // Send the verification key to the user's email
+        await this.emailService.sendVerificationKey(savedOtpEntity.email, otp);
 
-        // send successfully message of otp creation
-        return { message: OtpMessages.ok }
+        // send a successful message of OTP creation
+        return { message: OtpMessages.otpSent + ' ' + this.maskEmail(savedOtpEntity.email) };
     }
+
 
     async verifyOtp(verifyOtpDto: VerifyOtpDto): Promise<object> {
         // Varify otp user
@@ -133,8 +128,9 @@ export class AuthService {
         }
 
         // Grab userId and user role and store into jwt token
-        const { user, role } = otpUser;
-        return await this.jwtUtilService.grantToken({ user, role });
+        const { user } = otpUser;
+        const { uuid, role } = user;
+        return await this.jwtUtilService.grantToken({ uuid, role });
     }
 
     async updatePassword(signInUserDto: SignInUserDto): Promise<object> {
@@ -198,5 +194,21 @@ export class AuthService {
         }
 
         return { message: UserMessages.userDeleted };
+    }
+
+    // Optional
+    maskEmail(email: string, maskDomain: boolean = false): string {
+        const [localPart, domain] = email.split('@');
+        const visibleLocalChars = 4;
+        const maskedLocalPart = localPart.slice(0, visibleLocalChars) + '*'.repeat(localPart.length - visibleLocalChars);
+
+        if (maskDomain) {
+            const visibleDomainChars = 2;
+            const [domainName, domainExtension] = domain.split('.');
+            const maskedDomainName = domainName.slice(0, visibleDomainChars) + '*'.repeat(domainName.length - visibleDomainChars);
+            return `${maskedLocalPart}@${maskedDomainName}.${domainExtension}`;
+        }
+
+        return `${maskedLocalPart}@${domain}`;
     }
 }

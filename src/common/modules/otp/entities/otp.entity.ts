@@ -15,9 +15,9 @@ export class Otp extends BaseEntity {
 
   @Column({ default: false })
   isLoggedBefore: boolean;
-  
+
   // One user can only have one otp
   @OneToOne(() => User, user => user.otp)
-  @JoinColumn()
+  @JoinColumn({ name: 'userId' })
   user: User;
 }

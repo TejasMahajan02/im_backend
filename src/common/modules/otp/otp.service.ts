@@ -42,7 +42,10 @@ export class OtpService {
     }
 
     async findOneByEmail(email: string): Promise<Otp | null> {
-        return await this.otpRepository.findOneBy({ email, isDeleted: false });
+        return await this.otpRepository.findOne({
+            where: { email, isDeleted: false },
+            relations: ['user'],
+        });
     }
 
     create(email: string, role: string, otp: string, createdAt: Date): Otp {

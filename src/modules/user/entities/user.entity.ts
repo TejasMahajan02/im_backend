@@ -18,7 +18,7 @@ export class User extends BaseEntity {
 
   // One user can only have one otp
   @OneToOne(() => Otp, otp => otp.user)
-  @JoinColumn()
+  // @JoinColumn({ name: 'otpId' })
   otp: Otp;
 
   // One user can only have one doctor info

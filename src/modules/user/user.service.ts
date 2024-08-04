@@ -12,7 +12,7 @@ export class UserService {
     ) { }
 
     async findOneById(uuid: string): Promise<User | null> {
-        return await this.usersRepository.findOneBy({ uuid, isDeleted: false });
+        return await this.usersRepository.findOne({ where: { uuid, isDeleted: false }, relations: ['otp'] });
     }
 
     async findOneByEmail(email: string): Promise<User | null> {
