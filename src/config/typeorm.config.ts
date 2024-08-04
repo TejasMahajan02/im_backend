@@ -3,7 +3,7 @@ import { Otp } from 'src/common/modules/otp/entities/otp.entity';
 import { CaseSupport } from 'src/modules/case/entities/case-support.entity';
 import { CaseType } from 'src/modules/case/entities/case-type.entity';
 import { Case } from 'src/modules/case/entities/case.entity';
-import { Specialization } from 'src/modules/case/entities/specialization.entity';
+import { Specialization } from 'src/modules/doctor/entities/specialization.entity';
 import { TreatmentPlan } from 'src/modules/case/entities/treatment-plan.entity';
 import { DoctorInfo } from 'src/modules/doctor/entities/doctor-info.entity';
 import { OrgDoctor } from 'src/modules/doctor/entities/org-doctor.entity';

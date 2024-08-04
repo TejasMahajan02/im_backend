@@ -26,4 +26,9 @@ export const OneTimePasswordEmailBody = (password: string) => `Your one time pas
 export const OTP_EXPIRY = 5;
 export const VerificationEmailBody = (key: string) => `Verification key : ${key} which will expires in ${OTP_EXPIRY} minute${OTP_EXPIRY > 1 && 's'}.`;
 
+// Cases
+export const CaseMessages = {
+    isExist: 'Case already exists.',
+    notFound: 'Case not found.'
+};
 

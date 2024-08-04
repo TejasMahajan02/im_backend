@@ -20,7 +20,6 @@ export class AdminController extends AuthController {
     @Roles(Role.SuperAdmin)
     async create(@Body() createUserDto: CreateUserDto): Promise<object> {
         createUserDto.role = Role.SuperAdmin;
-        createUserDto.createdBy = 'Developer';
         return await this.authService.signUp(createUserDto);
     }
 

@@ -1,11 +1,14 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CaseSupport } from './entities/case-support.entity';
 import { CaseType } from './entities/case-type.entity';
 import { Case } from './entities/case.entity';
-import { Specialization } from './entities/specialization.entity';
-import { NameDto } from './dto/name.dto';
+import { Specialization } from '../doctor/entities/specialization.entity';
+import { NameDto } from '../../common/dto/name.dto';
+import { CreateCaseDto } from './dto/create-case.dto';
+import { UpdateCaseDto } from './dto/update-case.dto';
+import { CaseMessages } from 'src/common/constants/messages';
 
 @Injectable()
 export class CaseService {
@@ -19,8 +22,7 @@ export class CaseService {
         @InjectRepository(CaseType)
         private caseTypeRepository: Repository<CaseType>,
 
-        @InjectRepository(Specialization)
-        private specializationRepository: Repository<Specialization>
+
     ) { }
 
     
@@ -49,15 +51,27 @@ export class CaseService {
         return await this.caseTypeRepository.find({});
     }
 
-    async addSpecialization(nameDto: NameDto): Promise<object> {
+    async createCase(createCaseDto: CreateCaseDto): Promise<object> {
+        return await this.caseRepository.save(createCaseDto);
+    }
+
+    async getAllCase(): Promise<object> {
+        return await this.caseRepository.find({});
+    }
+
+    async getCase(id: string): Promise<object> {
         try {
-            return await this.specializationRepository.save(nameDto);
+            return await this.caseRepository.findBy({ uuid: id });
         } catch (error) {
-            throw new InternalServerErrorException();
+            throw new NotFoundException(CaseMessages.notFound);
         }
     }
 
-    async getAllSpecializations(): Promise<object> {
-        return await this.specializationRepository.find({});
+    async updateCase(id: string, updateCaseDto: UpdateCaseDto): Promise<object> {
+        return await this.caseRepository.update({ uuid: id }, updateCaseDto);
+    }
+
+    async deleteCase(id: string): Promise<object> {
+        return await this.caseRepository.update({ uuid: id }, { isDeleted: true });
     }
 }

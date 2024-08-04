@@ -4,7 +4,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Case } from './entities/case.entity';
 import { CaseSupport } from './entities/case-support.entity';
 import { CaseType } from './entities/case-type.entity';
-import { Specialization } from './entities/specialization.entity';
 import { TreatmentPlan } from './entities/treatment-plan.entity';
 import { CaseService } from './case.service';
 
@@ -14,7 +13,6 @@ import { CaseService } from './case.service';
       Case,
       CaseSupport,
       CaseType,
-      Specialization,
       TreatmentPlan
     ])
   ],
