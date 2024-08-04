@@ -16,7 +16,7 @@ export class UserService {
     }
 
     async findOneByEmail(email: string): Promise<User | null> {
-        return await this.usersRepository.findOneBy({ email, isDeleted: false });
+        return await this.usersRepository.findOne({ where: { email, isDeleted: false }, relations: ['otp'] });
     }
 
     async save(createUserDto: CreateUserDto): Promise<User> {

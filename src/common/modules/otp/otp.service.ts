@@ -40,24 +40,15 @@ export class OtpService {
         // Check if the current time is past the expiration time
         return currentTime.getTime() > expirationTime;
     }
-
-    async findOneByEmail(email: string): Promise<Otp | null> {
-        return await this.otpRepository.findOne({
-            where: { email, isDeleted: false },
-            relations: ['user'],
-        });
-    }
-
-    create(email: string, role: string, otp: string, createdAt: Date): Otp {
-        return this.otpRepository.create({ email, role, otp, createdAt });
+    
+    create(otp: string, createdAt: Date): Otp {
+        const otpEntity = new Otp();
+        otpEntity.otp = otp;
+        otpEntity.createdAt = createdAt;
+        return otpEntity;
     }
 
     async save(otpEntity: object): Promise<Otp> {
         return await this.otpRepository.save(otpEntity);
-    }
-
-    // This will used to identify user is log in for the first time or logged before
-    async updateIsLoggedBefore(email: string) {
-        return await this.otpRepository.update({ email }, { isLoggedBefore: true });
     }
 }

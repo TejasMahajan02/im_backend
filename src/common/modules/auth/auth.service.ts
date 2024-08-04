@@ -9,6 +9,7 @@ import { OtpMessages, UserMessages } from 'src/common/constants/messages';
 import { SignInUserDto } from '../../dto/sign-in-user.dto';
 import { VerifyOtpDto } from 'src/common/modules/otp/dto/verify-otp.dto';
 import { ForgetPasswordDto } from '../../dto/forget-password.dto';
+import { User } from 'src/modules/user/entities/user.entity';
 
 @Injectable()
 export class AuthService {
@@ -56,22 +57,18 @@ export class AuthService {
         }
 
         // Create or update otp and send to user email
-        return await this.createOrUpdateOtp(user.email, user.role);
+        return await this.createOrUpdateOtp(user);
     }
 
-    async createOrUpdateOtp(email: string, role: string) {
+    async createOrUpdateOtp(user: User) {
         // Generate otp and hash it
         const otp = this.otpService.generateNumericOTP();
         const hashedOtp = await this.passwordService.hashPassword(otp);
-
-        // Find the user by email
-        const user = await this.userService.findOneByEmail(email);
-        if (!user) {
-            throw new NotFoundException(UserMessages.notFound);
-        }
+        // const email = user.email; // Use the email from the user object
 
         // Check if an OTP record already exists for the given email
-        let otpEntity = await this.otpService.findOneByEmail(email);
+        // let otpEntity = await this.otpService.findOneByEmail(email);
+        let otpEntity = user.otp;
 
         // Get current date
         const currentDate = new Date()
@@ -83,7 +80,7 @@ export class AuthService {
             otpEntity.modifiedAt = currentDate; // Used to identify first-time login or not
         } else {
             // If the OTP record does not exist, create a new record
-            otpEntity = this.otpService.create(email, role, hashedOtp, currentDate);
+            otpEntity = this.otpService.create(hashedOtp, currentDate);
 
             // Set the user in the OTP entity
             otpEntity.user = user;
@@ -97,39 +94,40 @@ export class AuthService {
         }
 
         // Send the verification key to the user's email
-        await this.emailService.sendVerificationKey(savedOtpEntity.email, otp);
+        await this.emailService.sendVerificationKey(user.email, otp);
 
         // send a successful message of OTP creation
-        return { message: OtpMessages.otpSent + ' ' + this.maskEmail(savedOtpEntity.email) };
+        return { message: OtpMessages.otpSent + ' ' + this.maskEmail(user.email) };
     }
 
 
     async verifyOtp(verifyOtpDto: VerifyOtpDto): Promise<object> {
-        // Varify otp user
-        const otpUser = await this.otpService.findOneByEmail(verifyOtpDto.email);
-        if (!otpUser) {
-            throw new NotFoundException();
+        // Verify otp user
+        const userEntity = await this.userService.findOneByEmail(verifyOtpDto.email);
+        if (!userEntity || !userEntity.otp) {
+            throw new NotFoundException(UserMessages.notFound);
         }
 
+        const otpEntity = userEntity.otp;
+
         // Check otp expiry
-        if (this.otpService.isExpired(otpUser.createdAt)) {
+        if (this.otpService.isExpired(otpEntity.createdAt)) {
             throw new BadRequestException(OtpMessages.otpExpired);
         }
 
         // Compare input otp with stored otp
         // We need to format otp because we can't compare number with store otp string
-        if (!await this.passwordService.comparePasswords(`${verifyOtpDto.otp}`, otpUser.otp)) {
+        if (!await this.passwordService.comparePasswords(`${verifyOtpDto.otp}`, otpEntity.otp)) {
             throw new BadRequestException(OtpMessages.invalidOtp);
         }
 
         // Send response to update temporary password only for first time logged in user
-        if (!otpUser.isLoggedBefore) {
+        if (!userEntity.isLoggedBefore) {
             return { message: OtpMessages.okAndUpdatePassword }
         }
 
         // Grab userId and user role and store into jwt token
-        const { user } = otpUser;
-        const { uuid, role } = user;
+        const { uuid, role } = userEntity;
         return await this.jwtUtilService.grantToken({ uuid, role });
     }
 
@@ -147,15 +145,20 @@ export class AuthService {
         user.password = hashPassword;
         user.modifiedAt = new Date();
         user.modifiedBy = user.uuid;
-        const result = await this.userService.save(user);
 
+        // Only set isLoggedBefore if it's not already set
+        if (!user.isLoggedBefore) {
+            user.isLoggedBefore = true;
+        }
+
+        const result = await this.userService.save(user);
         // Throw error if update failed
         if (!result) {
             throw new InternalServerErrorException(UserMessages.unexpectedError);
         }
 
         // Mark IsLoggedBefore to true to identify about user updated his password
-        await this.otpService.updateIsLoggedBefore(user.email);
+        // await this.otpService.updateIsLoggedBefore(user.email);
 
         return { message: UserMessages.passwordUpdated };
     }
@@ -169,7 +172,7 @@ export class AuthService {
         }
 
         // Create or update otp and send it to user email
-        const otp = await this.createOrUpdateOtp(user.email, user.role);
+        const otp = await this.createOrUpdateOtp(user);
 
         if (!otp) {
             throw new InternalServerErrorException(OtpMessages.unexpectedError);
